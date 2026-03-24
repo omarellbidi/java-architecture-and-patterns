@@ -1,6 +1,5 @@
 package bank;
 
-import java.util.stream.Collectors;
 import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.Date;
@@ -9,6 +8,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import bank.database.*;
 
@@ -35,6 +35,17 @@ public class Bank {
         // Optionally preload cache for better performance
         preloadCache();
     }
+
+    /**
+     * Package-private constructor for dependency injection (used in tests).
+     * Allows injecting mock DAOs without touching the database.
+     */
+    Bank(CustomerDAO customerDAO, AccountDAO accountDAO, TransactionService transactionService) {
+        this.customerDAO = customerDAO;
+        this.accountDAO = accountDAO;
+        this.transactionService = transactionService;
+    }
+
     
     /**
      * Preloads the cache with data from the database for faster access.
@@ -53,7 +64,7 @@ public class Bank {
      * Registers a customer and returns a unique customer ID.
      */
     public String registerCustomer(String firstName, String lastName, Date birthDay) {
-        String id = firstName.substring(0, 1) + lastName + System.nanoTime();  // Generate a unique ID
+        String id = UUID.randomUUID().toString();  // Collision-proof unique ID
         Customer newCustomer = new Customer(id, firstName, lastName, birthDay);
         
         // Save to database
@@ -98,7 +109,7 @@ public class Bank {
             }
         }
         
-        String accountId = "C-" + System.nanoTime();  // Generate a unique ID
+        String accountId = "C-" + UUID.randomUUID().toString();  // Collision-proof unique ID
         CorporateAccount newAccount = new CorporateAccount(accountId, BigDecimal.ZERO, customerData[0]);
         
         // Save to database
@@ -118,7 +129,7 @@ public class Bank {
      */
     public Optional<String> registerPersonalAccount(String customerId) {
         if (customerDAO.exists(customerId)) {
-            String accountId = "P-" + System.nanoTime();  // Generate a unique ID
+            String accountId = "P-" + UUID.randomUUID().toString();  // Collision-proof unique ID
             PersonalAccount newAccount = new PersonalAccount(accountId, BigDecimal.ZERO, customerId);
             
             // Save to database

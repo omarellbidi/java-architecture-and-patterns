@@ -22,6 +22,16 @@ public class TransactionService {
     public TransactionService() {
         this.connectionManager = DatabaseConnectionManager.getInstance();
     }
+
+    /**
+     * Public constructor for testing — allows injecting a custom
+     * (e.g. H2-backed) connection manager without touching the singleton.
+     */
+    public TransactionService(DatabaseConnectionManager connectionManager) {
+        this.connectionManager = connectionManager;
+    }
+
+
     
     /**
      * Records a deposit transaction and updates account balance.
