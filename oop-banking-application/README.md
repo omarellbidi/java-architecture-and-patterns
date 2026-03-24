@@ -1,4 +1,4 @@
-# 🏦 Enterprise OOP Banking Application
+# Enterprise OOP Banking Application
 
 ![Java](https://img.shields.io/badge/Java-11%2B-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
 ![MySQL](https://img.shields.io/badge/MySQL-Database-4479A1?style=for-the-badge&logo=mysql&logoColor=white)
@@ -8,7 +8,7 @@
 
 A robust, enterprise-grade banking application built utilizing **Object-Oriented Programming (OOP) principles** and the **Data Access Object (DAO) design pattern**. It handles registration, accounts (Personal and Corporate), thread-safe transactions, and full database persistence with HikariCP.
 
-## 🌟 Key Features
+## Key Features
 
 * **Multi-Account Support:** Segregates logic for **Personal Accounts** (strict balances) and **Corporate Accounts** (support for multiple owners and negative overdraft balances).
 * **ACID-Compliant Transactions:** `TransactionService` enforces Atomicity, Consistency, Isolation, and Durability (ACID) by executing transfers atomically within a SQL transaction, utilizing `Connection.rollback()` on failure.
@@ -17,7 +17,7 @@ A robust, enterprise-grade banking application built utilizing **Object-Oriented
 * **Audit Logging:** Every financial action creates an immutable trail in the `audit_log` database table.
 * **Interactive CLI Interface:** Fully functioning command-line interface for the end-user.
 
-## 🗄️ Architecture
+## Architecture
 
 The codebase represents a classic layered N-Tier architecture:
 
@@ -48,7 +48,7 @@ The codebase represents a classic layered N-Tier architecture:
 [ Relational Database (MySQL)   ]
 ```
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 * Java 11 or higher
@@ -76,7 +76,7 @@ The codebase represents a classic layered N-Tier architecture:
    mvn exec:java -Dexec.mainClass="bank.BankApplication"
    ```
 
-### 🧪 Running the Test Suite
+### Running the Test Suite
 The testing environment avoids database conflicts by utilizing **H2 In-Memory Databases** and **In-Memory Stubs**, meaning it can be run instantly without configuring a MySQL server.
 ```bash
 mvn test
