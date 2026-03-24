@@ -1,4 +1,4 @@
-# 📡 gRPC News Broadcasting System
+#  gRPC News Broadcasting System
 
 ![Java](https://img.shields.io/badge/Java-11%2B-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
 ![gRPC](https://img.shields.io/badge/gRPC-Framework-23758F?style=for-the-badge&logo=grpc&logoColor=white)
