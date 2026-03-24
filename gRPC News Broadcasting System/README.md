@@ -7,7 +7,7 @@
 
 A high-performance, real-time news broadcasting system built on the **Publish-Subscribe (Pub/Sub) architectural pattern** using **gRPC** and **Protocol Buffers**. This application acts as a robust message broker, routing topic-based news streams from authenticated publishers to connected clients.
 
-## 🌟 Key Features
+## Key Features
 
 * **Real-time Streaming:** Leverages gRPC server-streaming to push news instantly to clients without polling.
 * **Topic-based Routing:** Clients subscribe to specific news topics, and the broker intelligently routes messages only to interested parties.
@@ -17,7 +17,7 @@ A high-performance, real-time news broadcasting system built on the **Publish-Su
   * **Content Filter mechanism:** Automatically scrubs or blocks messages containing restricted keywords.
 * **Resilient Client Management:** Automatically detects disconnected gRPC streams and performs memory cleanup to prevent memory leaks.
 
-## 🏗️ Architecture
+##  Architecture
 
 The system follows the **Observer Design Pattern** adapted for a distributed environment:
 
@@ -42,7 +42,7 @@ The system follows the **Observer Design Pattern** adapted for a distributed env
 3. The **Trusted Source Manager** verifies publisher credentials.
 4. The **Main Spreader** (acting as the subject) iterates over its thread-safe registry of active **NewsObservers** and streams the payload.
 
-## 🚀 Getting Started
+##  Getting Started
 
 ### Prerequisites
 * Java 11 or higher
