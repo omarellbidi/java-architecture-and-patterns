@@ -1,43 +1,37 @@
 package observer;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * A helper class to manage trusted news sources.
- * Handles the registration of sources and verifies their credentials during authentication.
+ * Manages trusted news sources.
+ * Thread-safe: uses ConcurrentHashMap for concurrent registration and lookup.
  */
 public class TrustedSourceManager {
-    private Map<String, String> trustedSources = new HashMap<>();
+
+    private final ConcurrentHashMap<String, String> trustedSources = new ConcurrentHashMap<>();
 
     /**
-     * Adds a new trusted source to the system.
-     * @param source The name of the source to register.
-     * @param hashedPassword The hashed password of the source.
-     * @return true if the source is registered successfully, false if it already exists.
+     * Registers a new trusted source with its hashed password.
+     * @return true if added; false if the source already exists.
      */
     public boolean addSource(String source, String hashedPassword) {
-        if (trustedSources.containsKey(source)) return false;
-        trustedSources.put(source, hashedPassword);
-        return true;
+        // putIfAbsent is atomic — returns null when the key was new
+        return trustedSources.putIfAbsent(source, hashedPassword) == null;
     }
 
     /**
-     * Checks if a source is already registered.
-     * @param source The name of the source.
-     * @return true if the source is registered, false otherwise.
+     * @return true if the source name is already registered.
      */
     public boolean isSourceRegistered(String source) {
         return trustedSources.containsKey(source);
     }
 
     /**
-     * Verifies if a given source's hashed password matches the stored password.
-     * @param source The name of the source.
-     * @param hashedPassword The hashed password to verify.
-     * @return true if the password matches, false otherwise.
+     * Verifies the hashed password for the given source.
+     * @return true if the password matches the stored hash.
      */
     public boolean authenticateSource(String source, String hashedPassword) {
         return hashedPassword.equals(trustedSources.get(source));
     }
 }
+

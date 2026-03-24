@@ -1,90 +1,71 @@
-# gRPC News Broadcasting System
+# 📡 gRPC News Broadcasting System
 
-## Project Overview
-This project extends a news broadcasting application (based on the Observer pattern) to support communication with external components using gRPC and Protocol Buffers. The system allows trusted sources to publish news that is then distributed to both internal observers and external clients through a standardized network interface.
+![Java](https://img.shields.io/badge/Java-11%2B-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
+![gRPC](https://img.shields.io/badge/gRPC-Framework-23758F?style=for-the-badge&logo=grpc&logoColor=white)
+![Protobuf](https://img.shields.io/badge/Protocol%20Buffers-Data-084B8A?style=for-the-badge)
+![Maven](https://img.shields.io/badge/Maven-Build-C71A22?style=for-the-badge&logo=apachemaven&logoColor=white)
 
-## Architecture
-The system consists of several interconnected components:
+A high-performance, real-time news broadcasting system built on the **Publish-Subscribe (Pub/Sub) architectural pattern** using **gRPC** and **Protocol Buffers**. This application acts as a robust message broker, routing topic-based news streams from authenticated publishers to connected clients.
 
-1. **Core News Broadcasting Logic**
-   - `MainSpreader`: Central implementation of the Observer pattern
-   - `TrustedSourceManager`: Handles source authentication with secure password hashing
-   - `ContentFilter`: Provides content moderation and word filtering
+## 🌟 Key Features
 
-2. **gRPC Services**
-   - `SpreadService`: Enables external components to register as sources and spread news
-   - `NewsService`: Allows external components to register as news receivers
+* **Real-time Streaming:** Leverages gRPC server-streaming to push news instantly to clients without polling.
+* **Topic-based Routing:** Clients subscribe to specific news topics, and the broker intelligently routes messages only to interested parties.
+* **Thread-Safe Architecture:** Built from the ground up to support high concurrency using `ConcurrentHashMap` and `CopyOnWriteArrayList`.
+* **Security & Content Moderation:**
+  * **Trusted Source Manager:** Authenticates publishers before allowing them to broadcast.
+  * **Content Filter mechanism:** Automatically scrubs or blocks messages containing restricted keywords.
+* **Resilient Client Management:** Automatically detects disconnected gRPC streams and performs memory cleanup to prevent memory leaks.
 
-3. **Client Implementation**
-   - `NewsReceiverClient`: A Java client that demonstrates consuming the NewsService
+## 🏗️ Architecture
 
-## Technical Implementation Details
+The system follows the **Observer Design Pattern** adapted for a distributed environment:
 
-### Protocol Buffers
-The system uses Protocol Buffers (protobuf) to define the service interfaces and message formats, enabling language-agnostic communication:
-
-```protobuf
-syntax = "proto3";
-package observer;
-service SpreadService {
-    rpc RegisterTrustedSource (RegisterRequest) returns (RegisterResponse);
-    rpc SpreadNews (SpreadRequest) returns (SpreadResponse);
-}
-service NewsService {
-    rpc RegisterReceiver (ReceiverRequest) returns (stream NewsUpdate);
-}
+```text
+[ Trusted Sources (Publishers) ] 
+       │ (gRPC Unary calls)
+       ▼
+┌─────────────────────────────────┐
+│     gRPC News Service Node      │
+│                                 │
+│  ├─ Content Filter              │
+│  ├─ Trusted Source Manager      │
+│  └─ Main Spreader (Broker)      │
+└─────────────────────────────────┘
+       │ (gRPC Server Streaming)
+       ▼
+[ Subscribed Clients (Observers) ]
 ```
 
-### Key Features
+1. **Publishers** send news articles via unary gRPC calls.
+2. The **Content Filter** validates and redacts the message.
+3. The **Trusted Source Manager** verifies publisher credentials.
+4. The **Main Spreader** (acting as the subject) iterates over its thread-safe registry of active **NewsObservers** and streams the payload.
 
-#### Authentication & Security
-- Password hashing using SHA-256
-- Source verification before news broadcasting
-- Proper exception handling and error propagation through gRPC
+## 🚀 Getting Started
 
-#### Content Filtering
-- Word blocking with configurable redaction policies
-- Protection against inappropriate content
-- Exception handling for blocked content
+### Prerequisites
+* Java 11 or higher
+* Maven 3.6+
 
-#### News Distribution
-- Real-time streaming to all connected clients
-- Thread-safe client management with CopyOnWriteArrayList
-- Support for both synchronous and asynchronous communication patterns
+### Build & Run
+1. **Clone the repository and build the project:**
+   ```bash
+   mvn clean package
+   ```
+2. **Start the gRPC Server:**
+   ```bash
+   mvn exec:java -Dexec.mainClass="observer.ServerMain"
+   ```
+   *The server will start and bind to port `50051`. A JVM shutdown hook ensures graceful termination.*
 
-#### Services Integration
-- Seamless integration between the core Observer pattern and gRPC services
-- Proper error handling and status code mapping
-- Support for server reflection to enable tools like grpcurl
-
-## Usage Examples
-
-### Starting the Server
+### Running the Test Suite
+The project features a comprehensive JUnit 5 test suite validating topic routing, content blocking, and concurrency.
 ```bash
-mvn exec:java -Dexec.mainClass="observer.ServerMain"
+mvn test
 ```
 
-### Using grpcurl to Interact with the Server
-```bash
-# Register a trusted source
-grpcurl -plaintext -d '{"source": "mysource", "pwd": "mypwd"}' localhost:8080 observer.SpreadService/RegisterTrustedSource
-
-# Spread news
-grpcurl -plaintext -d '{"news": "Breaking news!", "source": "mysource", "pwd": "mypwd"}' localhost:8080 observer.SpreadService/SpreadNews
-```
-
-### Running the Java Client
-```bash
-mvn exec:java -Dexec.mainClass="observer.NewsReceiverClient"
-```
-
-## Design Highlights
-- **Design Patterns**: Observer pattern for internal communication, Adapter pattern for gRPC integration
-- **Thread Safety**: Proper handling of concurrent client connections
-- **Error Handling**: Comprehensive exception handling both internally and through gRPC
-
-## Technologies Used
-- gRPC framework
-- Protocol Buffers
-- Observer Design Pattern
-- Concurrent programming
+## 🛠️ Tech Stack & Design Decisions
+* **gRPC / HTTP/2:** Chosen for its low latency, high throughput, and native streaming capabilities compared to REST/HTTP 1.1.
+* **Protocol Buffers:** Ensures strict type safety, backward compatibility, and highly compressed payload sizes over the wire.
+* **Concurrency:** Replaced legacy locks with `java.util.concurrent` non-blocking collections to eliminate thread bottlenecks during mass broadcasts.

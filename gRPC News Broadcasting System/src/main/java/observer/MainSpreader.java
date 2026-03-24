@@ -2,19 +2,25 @@ package observer;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * MainSpreader is the central broadcaster for spreading news.
- * Implements the Subject interface and uses helpers for source management and content filtering.
+ * Implements the Subject and NewsSpreader interfaces.
+ * Thread-safe: uses ConcurrentHashMap and CopyOnWriteArrayList for concurrent access.
  */
-
 public class MainSpreader implements Subject, NewsSpreader {
-    private TrustedSourceManager sourceManager = new TrustedSourceManager();
-    private ContentFilter contentFilter = new ContentFilter();
-    private Map<String, List<NewsObserver>> topicObservers = new HashMap<>();
+
+    private final TrustedSourceManager sourceManager;
+    private final ContentFilter contentFilter;
+    /** Topic -> list of observers. "all" is the catch-all topic. */
+    private final ConcurrentHashMap<String, CopyOnWriteArrayList<NewsObserver>> topicObservers;
 
     public MainSpreader() {
-        // Default constructor
+        this.sourceManager  = new TrustedSourceManager();
+        this.contentFilter  = new ContentFilter();
+        this.topicObservers = new ConcurrentHashMap<>();
     }
 
     // Registers a trusted news source with a hashed password
@@ -38,7 +44,10 @@ public class MainSpreader implements Subject, NewsSpreader {
         return contentFilter.unblockWord(word);
     }
 
-    // Processes and broadcasts news from a trusted source
+    /**
+     * Validates the source credentials, filters the news content, then
+     * notifies all observers subscribed to the news's topic (or "all").
+     */
     @Override
     public String spreadNews(String news, String source, String pwd) throws NewsSpreaderException {
         if (news == null || source == null || pwd == null) {
@@ -51,48 +60,54 @@ public class MainSpreader implements Subject, NewsSpreader {
             throw new AuthenticationException("Failed authentication for source: " + source);
         }
 
-        String processedNews = contentFilter.processNews(news); // Filter the news content
-        LocalDateTime timestamp = LocalDateTime.now(); // Get the current timestamp
-        notifyObservers(processedNews, source, timestamp, extractTopic(news)); // Notify observers
+        String processedNews = contentFilter.processNews(news);
+        LocalDateTime timestamp = LocalDateTime.now();
+        notifyObservers(processedNews, source, timestamp, extractTopic(news));
         return processedNews;
     }
 
-    // Registers an observer for all topics by default
+    /** Registers an observer for all topics (catch-all). */
     @Override
     public void registerObserver(NewsObserver observer) {
         registerObserver(observer, "all");
     }
 
-    // Registers an observer for a specific topic
+    /** Registers an observer for a specific topic. */
     @Override
     public void registerObserver(NewsObserver observer, String topic) {
         if (observer == null || topic == null || topic.isEmpty()) return;
-        topicObservers.computeIfAbsent(topic, k -> new ArrayList<>()).add(observer);
+        topicObservers
+            .computeIfAbsent(topic, k -> new CopyOnWriteArrayList<>())
+            .addIfAbsent(observer);
     }
 
-    // Unregisters an observer from all topics
+    /** Removes an observer from every topic it is registered under. */
     @Override
     public void unregisterObserver(NewsObserver observer) {
-        for (List<NewsObserver> observers : topicObservers.values()) {
-            observers.remove(observer);
-        }
+        topicObservers.values().forEach(list -> list.remove(observer));
     }
 
-    // Notifies all observers of news (default topic)
+    /** Notifies observers on the catch-all ("all") topic. */
     @Override
     public void notifyObservers(String news, String source, LocalDateTime timestamp) {
         notifyObservers(news, source, timestamp, "all");
     }
 
-    // Notifies observers subscribed to a specific topic
+    /** Notifies observers subscribed to the specified topic. */
     public void notifyObservers(String news, String source, LocalDateTime timestamp, String topic) {
-        List<NewsObserver> observers = topicObservers.getOrDefault(topic, new ArrayList<>());
-        for (NewsObserver observer : observers) {
-            observer.update(news, source, timestamp);
+        CopyOnWriteArrayList<NewsObserver> topicList =
+                topicObservers.getOrDefault(topic, new CopyOnWriteArrayList<>());
+        CopyOnWriteArrayList<NewsObserver> allList =
+                topicObservers.getOrDefault("all", new CopyOnWriteArrayList<>());
+
+        topicList.forEach(o -> o.update(news, source, timestamp));
+        // also notify catch-all observers if topic is not "all"
+        if (!"all".equals(topic)) {
+            allList.forEach(o -> o.update(news, source, timestamp));
         }
     }
 
-    // Extracts a topic from news if it contains a hashtag
+    /** Extracts the first hashtag from the news as a topic, or returns "all". */
     private String extractTopic(String news) {
         if (news.contains("#")) {
             return Arrays.stream(news.split("\\s+"))
@@ -103,12 +118,14 @@ public class MainSpreader implements Subject, NewsSpreader {
         return "all";
     }
 
-    // Hashes a password using SHA-256
-    private String hashPassword(String password) {
+    /** Produces a hex-encoded SHA-256 hash of the given password. */
+    static String hashPassword(String password) {
         try {
-            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
-            byte[] encodedHash = digest.digest(password.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-            StringBuilder hexString = new StringBuilder();
+            java.security.MessageDigest digest =
+                    java.security.MessageDigest.getInstance("SHA-256");
+            byte[] encodedHash =
+                    digest.digest(password.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder hexString = new StringBuilder(encodedHash.length * 2);
             for (byte b : encodedHash) {
                 String hex = Integer.toHexString(0xff & b);
                 if (hex.length() == 1) hexString.append('0');
@@ -116,44 +133,9 @@ public class MainSpreader implements Subject, NewsSpreader {
             }
             return hexString.toString();
         } catch (java.security.NoSuchAlgorithmException e) {
-            throw new RuntimeException("Error hashing password", e);
+            throw new RuntimeException("SHA-256 not available", e);
         }
-    }
-
-    // Main method for demonstration
-    public static void main(String[] args) {
-        MainSpreader broadcaster = new MainSpreader();
-
-        // Register a trusted news source
-        broadcaster.registerTrustedSource("source1", "password1");
-
-        // Register an observer that prints news to the console
-        broadcaster.registerObserver((news, source, timestamp) ->
-                System.out.println("Console Observer: " + news + " from " + source + " at " + timestamp)
-        );
-
-        // Register an observer that logs news to a file
-        broadcaster.registerObserver((news, source, timestamp) -> {
-            try (java.io.FileWriter writer = new java.io.FileWriter("news_log.txt", true)) {
-                writer.write("File Observer: " + news + " from " + source + " at " + timestamp + "\n");
-            } catch (java.io.IOException e) {
-                e.printStackTrace();
-            }
-        });
-
-        // Simulate news input from the command line
-        java.util.Scanner scanner = new java.util.Scanner(System.in);
-        System.out.println("Enter news (type 'exit' to quit): ");
-        while (true) {
-            String input = scanner.nextLine();
-            if ("exit".equalsIgnoreCase(input)) break;
-            try {
-                broadcaster.spreadNews(input, "source1", "password1");
-            } catch (Exception e) {
-                System.out.println("Error: " + e.getMessage());
-            }
-        }
-        scanner.close();
     }
 }
+
 
